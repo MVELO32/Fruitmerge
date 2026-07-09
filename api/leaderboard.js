@@ -14,13 +14,18 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const raw = await redis.zrevrangewithscores(KEY, 0, MAX - 1);
-      const entries = raw.map(({ member, score }) => {
+      const raw = await redis.zrange(KEY, 0, MAX - 1, {
+        rev: true,
+        withScores: true,
+      });
+      // zrange withScores returns a flat array: [member, score, member, score, ...]
+      const entries = [];
+      for (let i = 0; i < raw.length; i += 2) {
         try {
-          const parsed = typeof member === "string" ? JSON.parse(member) : member;
-          return { ...parsed, score: Number(score) };
-        } catch { return null; }
-      }).filter(Boolean);
+          const member = typeof raw[i] === "string" ? JSON.parse(raw[i]) : raw[i];
+          entries.push({ ...member, score: Number(raw[i + 1]) });
+        } catch {}
+}
       return res.status(200).json({ ok: true, entries });
     } catch (err) {
       console.error("GET error:", err);
