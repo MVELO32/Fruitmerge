@@ -12,28 +12,22 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // GET — return top scores
   if (req.method === "GET") {
     try {
-      // zrevrangewithscores returns [{ member, score }, ...] in the Upstash SDK
       const raw = await redis.zrevrangewithscores(KEY, 0, MAX - 1);
       const entries = raw.map(({ member, score }) => {
         try {
           const parsed = typeof member === "string" ? JSON.parse(member) : member;
           return { ...parsed, score: Number(score) };
-        } catch {
-          return null;
-        }
+        } catch { return null; }
       }).filter(Boolean);
-
       return res.status(200).json({ ok: true, entries });
     } catch (err) {
       console.error("GET error:", err);
-      return res.status(500).json({ ok: false, error: "Failed to load leaderboard" });
+      return res.status(500).json({ ok: false, error: String(err) });
     }
   }
 
-  // POST — submit a score
   if (req.method === "POST") {
     try {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
@@ -46,16 +40,18 @@ export default async function handler(req, res) {
       if (typeof score !== "number" || score < 0 || score > 1_000_000)
         return res.status(400).json({ ok: false, error: "Invalid score" });
 
-      // Store name+avatar as member key — zadd GT only updates if new score is higher
-      const member = JSON.stringify({ name: name.trim(), avatar, date: new Date().toISOString() });
+      // Member key is ONLY name+avatar — no date — so the same player
+      // always maps to the same Redis key and zadd GT updates their best score
+      const member = JSON.stringify({ name: name.trim(), avatar });
+
+      // GT = only update if new score is strictly greater than existing
       await redis.zadd(KEY, { score, member, gt: true });
-      // Trim to top MAX
       await redis.zremrangebyrank(KEY, 0, -(MAX + 1));
 
       return res.status(200).json({ ok: true });
     } catch (err) {
       console.error("POST error:", err);
-      return res.status(500).json({ ok: false, error: "Failed to submit score" });
+      return res.status(500).json({ ok: false, error: String(err) });
     }
   }
 
