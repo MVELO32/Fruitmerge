@@ -7,8 +7,9 @@ const FLOOR_T = 20;
 export const DANGER_Y = 72;
 export const DROP_Y   = 42;
 
-export function useGameEngine({ canvasRef, canvasSize, onScore, onGameOver, onTierChange }) {
-  const engineRef     = useRef(null);
+export function useGameEngine({ canvasRef, canvasSize, onScore, onGameOver, onTierChange, engineRef: externalEngineRef }) {
+  const internalRef   = useRef(null);
+  const engineRef     = externalEngineRef || internalRef;
   const runnerRef     = useRef(null);
   const renderRef     = useRef(null);
   const fruitsRef     = useRef([]);
@@ -21,7 +22,6 @@ export function useGameEngine({ canvasRef, canvasSize, onScore, onGameOver, onTi
   const nextTierRef   = useRef(0);
   const scoreRef      = useRef(0);
   const sizeRef       = useRef(canvasSize);
-  // Scaled fruits for the current canvas width — recalculated on resize
   const fruitsDefRef  = useRef(getFruits(canvasSize.width));
   const onScoreRef    = useRef(onScore);
   const onGameOverRef = useRef(onGameOver);
@@ -50,7 +50,11 @@ export function useGameEngine({ canvasRef, canvasSize, onScore, onGameOver, onTi
       frictionAir: 0.01,
       density: 0.003,
       label: "fruit",
-      render: { fillStyle: color, strokeStyle: "rgba(255,255,255,0.18)", lineWidth: 1.5 },
+      render: {
+        fillStyle: color,
+        strokeStyle: "rgba(255,255,255,0.18)",
+        lineWidth: 1.5,
+      },
     });
     body.fruitTier    = tier;
     body.isFalling    = !merged;
@@ -90,27 +94,23 @@ export function useGameEngine({ canvasRef, canvasSize, onScore, onGameOver, onTi
     setTimeout(() => { if (!gameOverRef.current) canDropRef.current = true; }, 600);
   }, [spawnFruit, clampX]);
 
-  // Resize canvas + walls when viewport changes
   useEffect(() => {
-    sizeRef.current = canvasSize;
-    // Recalculate fruit sizes for the new canvas width
+    sizeRef.current      = canvasSize;
     fruitsDefRef.current = getFruits(canvasSize.width);
-
     const engine = engineRef.current;
     const render  = renderRef.current;
     const walls   = wallsRef.current;
     if (!engine || !render || !walls.floor) return;
-
     const { width, height } = canvasSize;
     render.canvas.width   = width;
     render.canvas.height  = height;
     render.options.width  = width;
     render.options.height = height;
-    Matter.Body.setPosition(walls.floor,  { x: width / 2,          y: height + FLOOR_T / 2 });
+    Matter.Body.setPosition(walls.floor, { x: width / 2, y: height + FLOOR_T / 2 });
     Matter.Body.setVertices(walls.floor,
       Matter.Bodies.rectangle(width / 2, height + FLOOR_T / 2, width + WALL_T * 2, FLOOR_T).vertices);
-    Matter.Body.setPosition(walls.left,   { x: -WALL_T / 2,        y: height / 2 });
-    Matter.Body.setPosition(walls.right,  { x: width + WALL_T / 2, y: height / 2 });
+    Matter.Body.setPosition(walls.left,  { x: -WALL_T / 2,        y: height / 2 });
+    Matter.Body.setPosition(walls.right, { x: width + WALL_T / 2, y: height / 2 });
     dropXRef.current = clampX(width / 2);
   }, [canvasSize, clampX]);
 
@@ -118,8 +118,6 @@ export function useGameEngine({ canvasRef, canvasSize, onScore, onGameOver, onTi
     const canvas = canvasRef.current;
     if (!canvas) return;
     const { width, height } = sizeRef.current;
-
-    // Scale fruits to initial canvas width
     fruitsDefRef.current = getFruits(width);
 
     const engine = Matter.Engine.create({ gravity: { y: 1.2 } });
@@ -141,7 +139,7 @@ export function useGameEngine({ canvasRef, canvasSize, onScore, onGameOver, onTi
     nextTierRef.current = randTier();
     dropXRef.current    = width / 2;
 
-    const wallOpts = { isStatic: true, friction: 0.4, restitution: 0.05, render: { fillStyle: "#1e1e24" } };
+    const wallOpts = { isStatic: true, friction: 0.4, restitution: 0.05, render: { fillStyle: "#1a1a22" } };
     const floor = Matter.Bodies.rectangle(width / 2, height + FLOOR_T / 2, width + WALL_T * 2, FLOOR_T, wallOpts);
     const left  = Matter.Bodies.rectangle(-WALL_T / 2, height / 2, WALL_T, height * 2, wallOpts);
     const right = Matter.Bodies.rectangle(width + WALL_T / 2, height / 2, WALL_T, height * 2, wallOpts);
@@ -187,7 +185,7 @@ export function useGameEngine({ canvasRef, canvasSize, onScore, onGameOver, onTi
     Matter.Runner.run(runner, engine);
     Matter.Render.run(render);
 
-    // Dropper preview
+    // Dropper preview — colored circle with guide line
     const drawDropper = () => {
       if (!canvas) { rafRef.current = requestAnimationFrame(drawDropper); return; }
       const ctx = canvas.getContext("2d");
