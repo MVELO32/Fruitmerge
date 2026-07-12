@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
-// Only show the rotation warning on touch/mobile devices.
-// Desktop users can play in any orientation.
 const isMobile = () =>
   "ontouchstart" in window ||
   navigator.maxTouchPoints > 0 ||
@@ -9,23 +7,33 @@ const isMobile = () =>
 
 export function RotationGuard({ children, engineRef }) {
   const [isLandscape, setIsLandscape] = useState(false);
+  const prevLandscape = useRef(false);
 
   useEffect(() => {
-    if (!isMobile()) return; // desktop — never block
+    if (!isMobile()) return;
 
     const check = () => {
       const landscape = window.innerWidth > window.innerHeight;
+
+      if (landscape === prevLandscape.current) return;
+      prevLandscape.current = landscape;
       setIsLandscape(landscape);
-      const engine = engineRef?.current;
-      if (engine) engine.timing.timeScale = landscape ? 0 : 1;
+
+      if (engineRef?.current) {
+        engineRef.current.timing.timeScale = landscape ? 0 : 1;
+      }
     };
+
+    // Use a short delay on orientationchange so the browser finishes
+    // updating innerWidth/innerHeight before we read them
+    const onOrient = () => setTimeout(check, 100);
 
     check();
     window.addEventListener("resize", check);
-    window.addEventListener("orientationchange", check);
+    window.addEventListener("orientationchange", onOrient);
     return () => {
       window.removeEventListener("resize", check);
-      window.removeEventListener("orientationchange", check);
+      window.removeEventListener("orientationchange", onOrient);
     };
   }, [engineRef]);
 
@@ -46,7 +54,7 @@ export function RotationGuard({ children, engineRef }) {
           <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", maxWidth: 280, lineHeight: 1.6 }}>
             Your game is paused and waiting — no progress lost.
           </p>
-          <style>{`@keyframes tilt { from{transform:rotate(-20deg)} to{transform:rotate(20deg)} }`}</style>
+          <style>{`@keyframes tilt { from { transform: rotate(-20deg) } to { transform: rotate(20deg) } }`}</style>
         </div>
       )}
     </>
