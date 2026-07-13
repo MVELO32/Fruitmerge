@@ -2,16 +2,39 @@ import { useState } from "react";
 
 const AVATARS = ["🍉","🍎","🍊","🍋","🍇","🍓","🍒","🍑","🍐","🍍","🍈"];
 
-export function ProfileModal({ profile, stats, onSave, onClose }) {
-  const [editing, setEditing]  = useState(false);
-  const [name,    setName]     = useState(profile.name);
-  const [avatar,  setAvatar]   = useState(profile.avatar);
-  const [error,   setError]    = useState("");
+async function checkNameTaken(name) {
+  try {
+    const res = await fetch(`/api/check?name=${encodeURIComponent(name)}`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.taken === true;
+  } catch {
+    return false;
+  }
+}
 
-  const handleSave = () => {
+export function ProfileModal({ profile, stats, onSave, onClose }) {
+  const [editing,  setEditing]  = useState(false);
+  const [name,     setName]     = useState(profile.name);
+  const [avatar,   setAvatar]   = useState(profile.avatar);
+  const [error,    setError]    = useState("");
+  const [checking, setChecking] = useState(false);
+
+  const handleSave = async () => {
     const trimmed = name.trim();
     if (!trimmed)            return setError("Name can't be empty");
+    if (trimmed.length < 2)  return setError("At least 2 characters");
     if (trimmed.length > 20) return setError("Max 20 characters");
+
+    // Only check uniqueness if the name actually changed
+    if (trimmed.toLowerCase() !== profile.name.toLowerCase()) {
+      setChecking(true);
+      setError("");
+      const taken = await checkNameTaken(trimmed);
+      setChecking(false);
+      if (taken) return setError("That name is already taken — try another");
+    }
+
     onSave({ name: trimmed, avatar });
     setEditing(false);
     setError("");
@@ -28,23 +51,17 @@ export function ProfileModal({ profile, stats, onSave, onClose }) {
     <div className="pm-wrap" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="pm-card">
 
-        {/* Header */}
         <div className="pm-header">
           <h2 className="pm-title">Profile</h2>
           <button className="pm-close" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {/* Avatar + name */}
         {editing ? (
           <div className="pm-edit">
             <p className="pm-section-label">Choose avatar</p>
             <div className="pm-avatars">
               {AVATARS.map((a) => (
-                <button
-                  key={a}
-                  className={`pm-av-btn ${avatar === a ? "pm-av-btn--on" : ""}`}
-                  onClick={() => setAvatar(a)}
-                >
+                <button key={a} className={`pm-av-btn ${avatar === a ? "pm-av-btn--on" : ""}`} onClick={() => setAvatar(a)}>
                   {a}
                 </button>
               ))}
@@ -57,12 +74,14 @@ export function ProfileModal({ profile, stats, onSave, onClose }) {
               maxLength={20}
               autoFocus
               onChange={(e) => { setName(e.target.value); setError(""); }}
-              onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              onKeyDown={(e) => e.key === "Enter" && !checking && handleSave()}
             />
             {error && <p className="pm-err">{error}</p>}
 
             <div className="pm-edit-btns">
-              <button className="pm-save-btn"   onClick={handleSave}>Save</button>
+              <button className="pm-save-btn" onClick={handleSave} disabled={checking}>
+                {checking ? "Checking…" : "Save"}
+              </button>
               <button className="pm-cancel-btn" onClick={handleCancel}>Cancel</button>
             </div>
           </div>
@@ -70,13 +89,10 @@ export function ProfileModal({ profile, stats, onSave, onClose }) {
           <div className="pm-identity">
             <div className="pm-big-av">{profile.avatar}</div>
             <p className="pm-name">{profile.name}</p>
-            <button className="pm-edit-btn" onClick={() => setEditing(true)}>
-              ✏️ Edit profile
-            </button>
+            <button className="pm-edit-btn" onClick={() => setEditing(true)}>✏️ Edit profile</button>
           </div>
         )}
 
-        {/* Stats */}
         <div className="pm-stats">
           <div className="pm-stat">
             <span className="pm-stat-val">{stats.gamesPlayed}</span>
