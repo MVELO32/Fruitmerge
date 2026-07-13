@@ -1,10 +1,13 @@
-import { useState, useCallback } from "react";
-import { GameCanvas }   from "./components/GameCanvas";
-import { Sidebar }      from "./components/Sidebar";
-import { GameOverlay }  from "./components/GameOverlay";
-import { ProfileSetup } from "./components/ProfileSetup";
-import { Leaderboard }  from "./components/Leaderboard";
-import { DROP_TIERS }   from "./game/catalog";
+import { useState, useCallback, useRef } from "react";
+import { GameCanvas }    from "./components/GameCanvas";
+import { Sidebar }       from "./components/Sidebar";
+import { GameOverlay }   from "./components/GameOverlay";
+import { ProfileSetup }  from "./components/ProfileSetup";
+import { ProfileModal }  from "./components/ProfileModal";
+import { Leaderboard }   from "./components/Leaderboard";
+import { RotationGuard } from "./components/RotationGuard";
+import { DROP_TIERS }    from "./game/catalog";
+import { loadStats, recordGame } from "./game/profileStats";
 import "./App.css";
 
 const LS_PROFILE = "fruitmerge_profile_v1";
@@ -14,19 +17,31 @@ const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(k
 const save = (key, val)      => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
 
 export default function App() {
+  const engineRef = useRef(null);
+
   const [profile,   setProfile]   = useState(() => load(LS_PROFILE, null));
+  const [stats,     setStats]     = useState(() => profile ? loadStats(profile) : { gamesPlayed: 0, totalScore: 0, bestScore: 0 });
   const [score,     setScore]     = useState(0);
   const [best,      setBest]      = useState(() => load(LS_BEST, 0));
   const [curTier,   setCurTier]   = useState(() => Math.floor(Math.random() * DROP_TIERS));
   const [nextTier,  setNextTier]  = useState(() => Math.floor(Math.random() * DROP_TIERS));
   const [isOver,    setIsOver]    = useState(false);
   const [showLB,    setShowLB]    = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [lastScore, setLastScore] = useState(0);
   const [gameKey,   setGameKey]   = useState(0);
 
   const handleProfileComplete = useCallback((p) => {
     save(LS_PROFILE, p);
     setProfile(p);
+    setStats(loadStats(p));
+  }, []);
+
+  // Called when user edits their profile from the modal
+  const handleProfileSave = useCallback((updated) => {
+    save(LS_PROFILE, updated);
+    setProfile(updated);
+    setStats(loadStats(updated));
   }, []);
 
   const handleScore = useCallback((s) => {
@@ -38,6 +53,13 @@ export default function App() {
     setBest((b) => { const nb = Math.max(b, s); if (nb > b) save(LS_BEST, nb); return nb; });
     setLastScore(s);
     setIsOver(true);
+    // Record completed game in stats
+    setProfile((p) => {
+      if (!p) return p;
+      const updated = recordGame(p, s);
+      setStats(updated);
+      return p;
+    });
   }, []);
 
   const handleTierChange = useCallback((cur, next) => {
@@ -54,51 +76,63 @@ export default function App() {
     setGameKey((k) => k + 1);
   }, []);
 
-  const openLB  = useCallback(() => setShowLB(true),  []);
-  const closeLB = useCallback(() => setShowLB(false), []);
-
   if (!profile) return <ProfileSetup onComplete={handleProfileComplete} />;
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <button className="hdr-profile" onClick={openLB}>
-          <span className="hdr-av">{profile.avatar}</span>
-          <span className="hdr-name">{profile.name}</span>
-        </button>
-        <span className="hdr-logo">FruitMerge</span>
-        <button className="hdr-lb" onClick={openLB} aria-label="Leaderboard">🏆</button>
-      </header>
+    <RotationGuard engineRef={engineRef}>
+      <div className="app">
+        <header className="app-header">
+          {/* Clicking the profile chip opens the profile modal */}
+          <button className="hdr-profile" onClick={() => setShowProfile(true)}>
+            <span className="hdr-av">{profile.avatar}</span>
+            <span className="hdr-name">{profile.name}</span>
+          </button>
+          <span className="hdr-logo">FruitMerge</span>
+          <button className="hdr-lb" onClick={() => setShowLB(true)} aria-label="Leaderboard">🏆</button>
+        </header>
 
-      <main className="game-layout">
-        <Sidebar score={score} best={best} curTier={curTier} nextTier={nextTier} />
-        <div className="game-area">
-          <GameCanvas
-            key={gameKey}
-            onScore={handleScore}
-            onGameOver={handleGameOver}
-            onTierChange={handleTierChange}
-          />
-          {isOver && (
-            <GameOverlay
-              score={score}
-              best={best}
-              profile={profile}
-              onRestart={startNew}
-              onLeaderboard={openLB}
+        <main className="game-layout">
+          <Sidebar score={score} best={best} curTier={curTier} nextTier={nextTier} />
+          <div className="game-area">
+            <GameCanvas
+              key={gameKey}
+              engineRef={engineRef}
+              onScore={handleScore}
+              onGameOver={handleGameOver}
+              onTierChange={handleTierChange}
             />
-          )}
-        </div>
-      </main>
+            {isOver && (
+              <GameOverlay
+                score={score}
+                best={best}
+                profile={profile}
+                onRestart={startNew}
+                onLeaderboard={() => setShowLB(true)}
+              />
+            )}
+          </div>
+        </main>
 
-      {showLB && (
-        <Leaderboard
-          profile={profile}
-          lastScore={isOver ? lastScore : 0}
-          onClose={closeLB}
-          onPlayAgain={startNew}
-        />
-      )}
-    </div>
+        {/* Profile modal */}
+        {showProfile && (
+          <ProfileModal
+            profile={profile}
+            stats={stats}
+            onSave={handleProfileSave}
+            onClose={() => setShowProfile(false)}
+          />
+        )}
+
+        {/* Leaderboard */}
+        {showLB && (
+          <Leaderboard
+            profile={profile}
+            lastScore={isOver ? lastScore : 0}
+            onClose={() => setShowLB(false)}
+            onPlayAgain={startNew}
+          />
+        )}
+      </div>
+    </RotationGuard>
   );
 }
