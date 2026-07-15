@@ -1,7 +1,7 @@
 // Base radii are calibrated for a 300px wide play area.
 // At runtime, getFruits(canvasWidth) scales them proportionally.
 
-const BASE_WIDTH = 300;
+const BASE_WIDTH = 270;
 
 const BASE_FRUITS = [
   { name: "Cherry",     r: 22,  color: "#e03131", score: 1   },
