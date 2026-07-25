@@ -24,8 +24,6 @@ export function RotationGuard({ children, engineRef }) {
       }
     };
 
-    // Use a short delay on orientationchange so the browser finishes
-    // updating innerWidth/innerHeight before we read them
     const onOrient = () => setTimeout(check, 100);
 
     check();

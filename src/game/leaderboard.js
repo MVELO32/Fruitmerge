@@ -32,7 +32,7 @@ function lsSubmit(profile, score) {
 async function apiGet() {
   const res = await fetch(API, { method: "GET" });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const text = await res.text(); // read as text first to debug
+  const text = await res.text(); 
   console.log("[leaderboard] raw GET response:", text);
   const data = JSON.parse(text);
   if (!Array.isArray(data.entries)) throw new Error("No entries array in response");

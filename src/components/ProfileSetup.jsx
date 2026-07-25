@@ -1,34 +1,33 @@
 import { useState } from "react";
 
-const AVATARS = ["🍉","🍎","🍊","🍋","🍇","🍓","🍒","🍑","🍐","🍍","🍈"];
+const AVATARS = ["🟥","🟧","🟨","🟩","🟦","🟪","⬛","⬜","🔴","🟠","🟡"];
 
 async function checkNameTaken(name) {
   try {
     const res = await fetch(`/api/check?name=${encodeURIComponent(name)}`);
-    if (!res.ok) return false; // fail open if API down
+    if (!res.ok) return false;
     const data = await res.json();
     return data.taken === true;
   } catch {
-    return false; // fail open if no network
+    return false;
   }
 }
 
 export function ProfileSetup({ onComplete, existingName = null }) {
   const [name,     setName]     = useState(existingName || "");
-  const [avatar,   setAvatar]   = useState("🍉");
+  const [avatar,   setAvatar]   = useState("🟥");
   const [error,    setError]    = useState("");
   const [checking, setChecking] = useState(false);
 
   const submit = async () => {
     const trimmed = name.trim();
-    if (!trimmed)             return setError("Enter a display name");
-    if (trimmed.length > 20)  return setError("Max 20 characters");
-    if (trimmed.length < 2)   return setError("At least 2 characters");
+    if (!trimmed)            return setError("Enter a display name");
+    if (trimmed.length < 2)  return setError("At least 2 characters");
+    if (trimmed.length > 20) return setError("Max 20 characters");
 
     setChecking(true);
     setError("");
 
-    // Skip uniqueness check if the player is keeping their existing name
     if (trimmed.toLowerCase() !== existingName?.toLowerCase()) {
       const taken = await checkNameTaken(trimmed);
       if (taken) {
@@ -44,8 +43,8 @@ export function ProfileSetup({ onComplete, existingName = null }) {
   return (
     <div className="ps-wrap">
       <div className="ps-card">
-        <div className="ps-logo">🍉</div>
-        <h1 className="ps-title">FruitMerge</h1>
+        <div className="ps-logo">🎨</div>
+        <h1 className="ps-title">ColourMerge</h1>
         <p className="ps-sub">Pick an avatar and a unique name to join the global leaderboard</p>
 
         <p className="ps-label">Choose your avatar</p>

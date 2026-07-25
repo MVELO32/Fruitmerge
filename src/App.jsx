@@ -10,8 +10,8 @@ import { DROP_TIERS }    from "./game/catalog";
 import { loadStats, recordGame } from "./game/profileStats";
 import "./App.css";
 
-const LS_PROFILE = "fruitmerge_profile_v1";
-const LS_BEST    = "fruitmerge_best_v1";
+const LS_PROFILE = "colourmerge_profile_v1";
+const LS_BEST    = "colourmerge_best_v1";
 
 const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const save = (key, val)      => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} };
@@ -19,17 +19,17 @@ const save = (key, val)      => { try { localStorage.setItem(key, JSON.stringify
 export default function App() {
   const engineRef = useRef(null);
 
-  const [profile,   setProfile]   = useState(() => load(LS_PROFILE, null));
-  const [stats,     setStats]     = useState(() => profile ? loadStats(profile) : { gamesPlayed: 0, totalScore: 0, bestScore: 0 });
-  const [score,     setScore]     = useState(0);
-  const [best,      setBest]      = useState(() => load(LS_BEST, 0));
-  const [curTier,   setCurTier]   = useState(() => Math.floor(Math.random() * DROP_TIERS));
-  const [nextTier,  setNextTier]  = useState(() => Math.floor(Math.random() * DROP_TIERS));
-  const [isOver,    setIsOver]    = useState(false);
-  const [showLB,    setShowLB]    = useState(false);
+  const [profile,     setProfile]     = useState(() => load(LS_PROFILE, null));
+  const [stats,       setStats]       = useState(() => profile ? loadStats(profile) : { gamesPlayed: 0, totalScore: 0, bestScore: 0 });
+  const [score,       setScore]       = useState(0);
+  const [best,        setBest]        = useState(() => load(LS_BEST, 0));
+  const [curTier,     setCurTier]     = useState(() => Math.floor(Math.random() * DROP_TIERS));
+  const [nextTier,    setNextTier]    = useState(() => Math.floor(Math.random() * DROP_TIERS));
+  const [isOver,      setIsOver]      = useState(false);
+  const [showLB,      setShowLB]      = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [lastScore, setLastScore] = useState(0);
-  const [gameKey,   setGameKey]   = useState(0);
+  const [lastScore,   setLastScore]   = useState(0);
+  const [gameKey,     setGameKey]     = useState(0);
 
   const handleProfileComplete = useCallback((p) => {
     save(LS_PROFILE, p);
@@ -37,7 +37,6 @@ export default function App() {
     setStats(loadStats(p));
   }, []);
 
-  // Called when user edits their profile from the modal
   const handleProfileSave = useCallback((updated) => {
     save(LS_PROFILE, updated);
     setProfile(updated);
@@ -53,7 +52,6 @@ export default function App() {
     setBest((b) => { const nb = Math.max(b, s); if (nb > b) save(LS_BEST, nb); return nb; });
     setLastScore(s);
     setIsOver(true);
-    // Record completed game in stats
     setProfile((p) => {
       if (!p) return p;
       const updated = recordGame(p, s);
@@ -82,12 +80,11 @@ export default function App() {
     <RotationGuard engineRef={engineRef}>
       <div className="app">
         <header className="app-header">
-          {/* Clicking the profile chip opens the profile modal */}
           <button className="hdr-profile" onClick={() => setShowProfile(true)}>
             <span className="hdr-av">{profile.avatar}</span>
             <span className="hdr-name">{profile.name}</span>
           </button>
-          <span className="hdr-logo">FruitMerge</span>
+          <span className="hdr-logo">ColourMerge</span>
           <button className="hdr-lb" onClick={() => setShowLB(true)} aria-label="Leaderboard">🏆</button>
         </header>
 
@@ -113,7 +110,6 @@ export default function App() {
           </div>
         </main>
 
-        {/* Profile modal */}
         {showProfile && (
           <ProfileModal
             profile={profile}
@@ -123,7 +119,6 @@ export default function App() {
           />
         )}
 
-        {/* Leaderboard */}
         {showLB && (
           <Leaderboard
             profile={profile}

@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-const AVATARS = ["🍉","🍎","🍊","🍋","🍇","🍓","🍒","🍑","🍐","🍍","🍈"];
+const AVATARS = ["🟥","🟧","🟨","🟩","🟦","🟪","⬛","⬜","🔴","🟠","🟡"];
 
 async function checkNameTaken(name) {
   try {
@@ -26,7 +26,6 @@ export function ProfileModal({ profile, stats, onSave, onClose }) {
     if (trimmed.length < 2)  return setError("At least 2 characters");
     if (trimmed.length > 20) return setError("Max 20 characters");
 
-    // Only check uniqueness if the name actually changed
     if (trimmed.toLowerCase() !== profile.name.toLowerCase()) {
       setChecking(true);
       setError("");
@@ -50,7 +49,6 @@ export function ProfileModal({ profile, stats, onSave, onClose }) {
   return (
     <div className="pm-wrap" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="pm-card">
-
         <div className="pm-header">
           <h2 className="pm-title">Profile</h2>
           <button className="pm-close" onClick={onClose} aria-label="Close">✕</button>
@@ -113,7 +111,6 @@ export function ProfileModal({ profile, stats, onSave, onClose }) {
             <span className="pm-stat-label">Avg score</span>
           </div>
         </div>
-
       </div>
     </div>
   );
